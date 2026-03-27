@@ -23,6 +23,22 @@ describe("PostMX client", () => {
     expect(() => new PostMX("")).toThrow("apiKey is required");
   });
 
+  it("falls back to the default baseUrl when given a blank string", async () => {
+    mockFetchOnce(200, { success: true, request_id: "req_1", message: {} });
+
+    const client = new PostMX("pmx_live_test", { baseUrl: "   " });
+    await client.getMessage("msg_1");
+
+    const [url] = vi.mocked(fetch).mock.calls[0];
+    expect(url).toContain("https://api.postmx.co");
+  });
+
+  it("throws a clear error when baseUrl is invalid", () => {
+    expect(() => new PostMX("pmx_live_test", { baseUrl: "not-a-url" })).toThrow(
+      "baseUrl must be a valid absolute URL",
+    );
+  });
+
   it("listInboxes returns inboxes with pagination", async () => {
     const inboxes = [
       { id: "inb_1", label: "test", email_address: "a@b.com", lifecycle_mode: "temporary", ttl_minutes: 15, expires_at: null, status: "active", last_message_received_at: "2026-03-25T18:04:10Z", created_at: "2026-01-01T00:00:00Z" },

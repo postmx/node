@@ -1,4 +1,5 @@
 import { request } from "./http";
+import { DEFAULT_BASE_URL, normalizeBaseUrl } from "./config";
 import type {
   PostMXConfig,
   ContentMode,
@@ -19,7 +20,6 @@ import type {
 } from "./types";
 import { PostMXError } from "./errors";
 
-const DEFAULT_BASE_URL = "https://api.postmx.co";
 const DEFAULT_MAX_RETRIES = 2;
 const DEFAULT_TIMEOUT = 30_000;
 
@@ -32,7 +32,7 @@ export class PostMX {
   constructor(apiKey: string, options?: PostMXConfig) {
     if (!apiKey) throw new Error("PostMX: apiKey is required");
     this.apiKey = apiKey;
-    this.baseUrl = options?.baseUrl ?? DEFAULT_BASE_URL;
+    this.baseUrl = normalizeBaseUrl(options?.baseUrl, DEFAULT_BASE_URL);
     this.maxRetries = options?.maxRetries ?? DEFAULT_MAX_RETRIES;
     this.timeout = options?.timeout ?? DEFAULT_TIMEOUT;
   }

@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
+import { normalizeBaseUrl } from "./config";
 import { PostMXApiError, PostMXNetworkError } from "./errors";
 
-const VERSION = "0.1.0";
+const VERSION = "0.1.1";
 const RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
 const MAX_BACKOFF_MS = 30_000;
 const BASE_DELAY_MS = 500;
@@ -30,7 +31,7 @@ interface ErrorBody {
 }
 
 function buildUrl(baseUrl: string, path: string, query?: Record<string, string | number | undefined>): string {
-  const url = new URL(path, baseUrl);
+  const url = new URL(path, normalizeBaseUrl(baseUrl));
   if (query) {
     for (const [key, value] of Object.entries(query)) {
       if (value !== undefined) url.searchParams.set(key, String(value));

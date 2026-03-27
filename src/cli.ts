@@ -1,10 +1,11 @@
 import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { DEFAULT_BASE_URL, normalizeBaseUrl } from "./config.js";
 import { PostMX } from "./client.js";
 import { PostMXError, PostMXApiError, PostMXNetworkError } from "./errors.js";
 
-const VERSION = "0.1.0";
+const VERSION = "0.1.1";
 
 // ── ANSI ────────────────────────────────────────────────────────────
 
@@ -74,9 +75,13 @@ function resolveApiKey(flags: Record<string, string | boolean>): string | undefi
 }
 
 function resolveBaseUrl(flags: Record<string, string | boolean>): string | undefined {
-  return typeof flags["base-url"] === "string"
-    ? flags["base-url"]
-    : process.env.POSTMX_BASE_URL || undefined;
+  const explicit = typeof flags["base-url"] === "string" ? flags["base-url"] : process.env.POSTMX_BASE_URL;
+  if (explicit === undefined || explicit.trim() === "") return undefined;
+  try {
+    return normalizeBaseUrl(explicit, DEFAULT_BASE_URL);
+  } catch (err) {
+    error(err instanceof Error ? err.message : String(err));
+  }
 }
 
 async function listMessagesByRecipientCompat(
@@ -98,8 +103,8 @@ async function listMessagesByRecipientCompat(
     ? reflectiveClient["apiKey"]
     : resolveApiKey({});
   const baseUrl = typeof reflectiveClient["baseUrl"] === "string"
-    ? reflectiveClient["baseUrl"]
-    : process.env.POSTMX_BASE_URL ?? "https://api.postmx.co";
+    ? normalizeBaseUrl(reflectiveClient["baseUrl"], DEFAULT_BASE_URL)
+    : normalizeBaseUrl(process.env.POSTMX_BASE_URL, DEFAULT_BASE_URL);
   if (!apiKey) error("Missing API key. Pass --api-key, set POSTMX_API_KEY, or run `postmx auth login --api-key <key>`.");
 
   const url = new URL("/v1/messages", baseUrl);
