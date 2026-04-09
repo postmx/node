@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { normalizeBaseUrl } from "./config";
 import { PostMXApiError, PostMXNetworkError } from "./errors";
 
-const VERSION = "0.1.1";
+const VERSION = "0.1.2";
 const RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
 const MAX_BACKOFF_MS = 30_000;
 const BASE_DELAY_MS = 500;

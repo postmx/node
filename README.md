@@ -2,10 +2,7 @@
 
 Official Node.js/TypeScript SDK for the [PostMX](https://postmx.co) API.
 
-- Zero runtime dependencies (uses built-in `fetch` + `node:crypto`)
-- Full TypeScript types
-- Automatic retries with exponential backoff
-- Webhook signature verification
+Think about PostMX in one simple flow: create a temporary inbox, wait for the next email, then read extracted fields like the OTP or first link.
 
 Requires Node.js 18+.
 
@@ -22,27 +19,27 @@ import { PostMX } from "postmx";
 
 const postmx = new PostMX("pmx_live_...");
 
-// Create a temporary inbox
-const inbox = await postmx.createInbox({
+const inbox = await postmx.createTemporaryInbox({
   label: "signup-test",
-  lifecycle_mode: "temporary",
-  ttl_minutes: 15,
 });
+
 console.log(inbox.email_address);
 
-// List active inboxes
-const { inboxes, pageInfo: inboxPage } = await postmx.listInboxes();
+const message = await postmx.waitForMessage(inbox.id, {
+  timeoutMs: 30_000,
+});
 
-// List messages
-const { messages, pageInfo } = await postmx.listMessages(inbox.id);
+console.log(message.otp);
+console.log(message.links[0]?.url ?? null);
+```
 
-// Or list messages by exact recipient email
-const recipientFeed = await postmx.listMessagesByRecipient(inbox.email_address);
+`waitForMessage()` returns the latest existing message immediately if the inbox already has one; otherwise it waits for the next incoming email until the timeout.
 
-// Get full message detail with OTP extraction
-const detail = await postmx.getMessage(messages[0].id);
-console.log(detail.otp);    // "482910"
-console.log(detail.intent); // "login_code"
+If you already have a message ID, `contentMode` is just a "what do you want back?" choice:
+
+```typescript
+const otpOnly = await postmx.getMessage("msg_123", "otp");
+console.log(otpOnly.otp);
 ```
 
 ## API Reference
@@ -60,6 +57,7 @@ console.log(detail.intent); // "login_code"
 ```typescript
 postmx.listInboxes(params?)              // → Promise<{ inboxes, pageInfo }>
 postmx.createInbox(params, options?)     // → Promise<Inbox>
+postmx.createTemporaryInbox(params, options?) // → Promise<Inbox>
 postmx.listMessages(inboxId, params?)    // → Promise<{ messages, pageInfo }>
 postmx.listMessagesByRecipient(recipientEmail, params?) // → Promise<{ messages, pageInfo }>
 postmx.getMessage(messageId)             // → Promise<MessageDetail>
@@ -67,7 +65,12 @@ postmx.createWebhook(params, options?)   // → Promise<CreateWebhookResult>
 postmx.waitForMessage(inboxId, options?) // → Promise<MessageDetail>
 ```
 
-POST methods accept an optional `{ idempotencyKey: string }` in the options parameter. If not provided, one is auto-generated to make retries safe.
+## Advanced
+
+- Use `createInbox()` when you need lifecycle controls like `persistent` inboxes or a custom `ttl_minutes`.
+- Use `listInboxes()` when you need wildcard address information or pagination.
+- Use `createWebhook()` and `verifyWebhookSignature()` when you want push delivery instead of polling.
+- POST methods accept an optional `{ idempotencyKey: string }` in the options parameter. If not provided, one is auto-generated to make retries safe.
 
 ## Error Handling
 

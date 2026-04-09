@@ -41,8 +41,8 @@ describe("PostMX client", () => {
 
   it("listInboxes returns inboxes with pagination", async () => {
     const inboxes = [
-      { id: "inb_1", label: "test", email_address: "a@b.com", lifecycle_mode: "temporary", ttl_minutes: 15, expires_at: null, status: "active", last_message_received_at: "2026-03-25T18:04:10Z", created_at: "2026-01-01T00:00:00Z" },
-      { id: "inb_2", label: "support", email_address: "b@c.com", lifecycle_mode: "persistent", ttl_minutes: null, expires_at: null, status: "active", last_message_received_at: null, created_at: "2026-01-02T00:00:00Z" },
+      { id: "inb_1", label: "test", email_address: "a@b.com", lifecycle_mode: "temporary", ttl_minutes: 15, expires_at: null, status: "active", last_message_received_at: "2026-03-25T18:04:10Z", created_at: "2026-01-01T00:00:00Z", message_analysis: { mode: "all", recipients: [] } },
+      { id: "inb_2", label: "support", email_address: "b@c.com", lifecycle_mode: "persistent", ttl_minutes: null, expires_at: null, status: "active", last_message_received_at: null, created_at: "2026-01-02T00:00:00Z", message_analysis: { mode: "disabled", recipients: [] } },
     ];
     const page_info = { has_more: false, next_cursor: null };
     mockFetchOnce(200, { success: true, request_id: "req_1", inboxes, page_info });
@@ -60,7 +60,7 @@ describe("PostMX client", () => {
   });
 
   it("listInboxes works with no params", async () => {
-    const inboxes = [{ id: "inb_1", label: "test", email_address: "a@b.com", lifecycle_mode: "temporary", ttl_minutes: null, expires_at: null, status: "active", last_message_received_at: null, created_at: "2026-01-01T00:00:00Z" }];
+    const inboxes = [{ id: "inb_1", label: "test", email_address: "a@b.com", lifecycle_mode: "temporary", ttl_minutes: null, expires_at: null, status: "active", last_message_received_at: null, created_at: "2026-01-01T00:00:00Z", message_analysis: { mode: "all", recipients: [] } }];
     const page_info = { has_more: false, next_cursor: null };
     mockFetchOnce(200, { success: true, request_id: "req_1", inboxes, page_info });
 
@@ -72,18 +72,60 @@ describe("PostMX client", () => {
   });
 
   it("createInbox sends correct request and returns inbox", async () => {
-    const inbox = { id: "inb_1", label: "test", email_address: "a@b.com", lifecycle_mode: "temporary", ttl_minutes: 15, expires_at: null, status: "active", created_at: "2026-01-01T00:00:00Z" };
+    const inbox = { id: "inb_1", label: "test", email_address: "a@b.com", lifecycle_mode: "temporary", ttl_minutes: 15, expires_at: null, status: "active", created_at: "2026-01-01T00:00:00Z", message_analysis: { mode: "all", recipients: [] } };
     mockFetchOnce(201, { success: true, request_id: "req_1", inbox });
 
     const client = new PostMX("pmx_live_test");
-    const result = await client.createInbox({ label: "test", lifecycle_mode: "temporary", ttl_minutes: 15 });
+    const result = await client.createInbox({
+      label: "test",
+      lifecycle_mode: "temporary",
+      ttl_minutes: 15,
+      message_analysis: { mode: "all", recipients: [] },
+    });
 
     expect(result).toEqual(inbox);
 
     const [url, init] = vi.mocked(fetch).mock.calls[0];
     expect(url).toContain("/v1/inboxes");
     expect(init!.method).toBe("POST");
-    expect(JSON.parse(init!.body as string)).toEqual({ label: "test", lifecycle_mode: "temporary", ttl_minutes: 15 });
+    expect(JSON.parse(init!.body as string)).toEqual({
+      label: "test",
+      lifecycle_mode: "temporary",
+      ttl_minutes: 15,
+      message_analysis: { mode: "all", recipients: [] },
+    });
+  });
+
+  it("createTemporaryInbox maps to createInbox with temporary lifecycle", async () => {
+    const inbox = {
+      id: "inb_1",
+      label: "signup-test",
+      email_address: "signup-test@postmx.email",
+      lifecycle_mode: "temporary",
+      ttl_minutes: 15,
+      expires_at: null,
+      status: "active",
+      created_at: "2026-01-01T00:00:00Z",
+      message_analysis: { mode: "all", recipients: [] },
+    };
+    mockFetchOnce(201, { success: true, request_id: "req_1", inbox });
+
+    const client = new PostMX("pmx_live_test");
+    const result = await client.createTemporaryInbox({
+      label: "signup-test",
+      ttl_minutes: 15,
+      message_analysis: { mode: "all", recipients: [] },
+    });
+
+    expect(result).toEqual(inbox);
+
+    const [, init] = vi.mocked(fetch).mock.calls[0];
+    expect(JSON.parse(init!.body as string)).toEqual({
+      label: "signup-test",
+      lifecycle_mode: "temporary",
+      ttl_minutes: 15,
+      message_analysis: { mode: "all", recipients: [] },
+    });
   });
 
   it("listMessages sends correct request with pagination", async () => {
@@ -125,7 +167,7 @@ describe("PostMX client", () => {
   });
 
   it("getMessage returns message detail", async () => {
-    const message = { id: "msg_1", otp: "123456", links: [], intent: "login_code" };
+    const message = { id: "msg_1", otp: "123456", links: [], intent: "login_code", analysis: { eligible: true, status: "queued", requested_at: null, completed_at: null, detected_otp: null, sender_name: null, category: null, extracted_id: null, amount_mentioned: null, is_urgent: null, action_required: null, summary: null } };
     mockFetchOnce(200, { success: true, request_id: "req_1", message });
 
     const client = new PostMX("pmx_live_test");
@@ -138,7 +180,7 @@ describe("PostMX client", () => {
   });
 
   it("getMessage with content_mode=otp sends query param", async () => {
-    const message = { id: "msg_1", otp: "123456" };
+    const message = { id: "msg_1", otp: "123456", analysis: { eligible: true, status: "queued", requested_at: null, completed_at: null, detected_otp: null, sender_name: null, category: null, extracted_id: null, amount_mentioned: null, is_urgent: null, action_required: null, summary: null } };
     mockFetchOnce(200, { success: true, request_id: "req_1", message });
 
     const client = new PostMX("pmx_live_test");
@@ -150,7 +192,7 @@ describe("PostMX client", () => {
   });
 
   it("getMessage with content_mode=links sends query param", async () => {
-    const message = { id: "msg_1", links: [{ url: "https://example.com", type: "verification" }] };
+    const message = { id: "msg_1", links: [{ url: "https://example.com", type: "verification" }], analysis: { eligible: true, status: "queued", requested_at: null, completed_at: null, detected_otp: null, sender_name: null, category: null, extracted_id: null, amount_mentioned: null, is_urgent: null, action_required: null, summary: null } };
     mockFetchOnce(200, { success: true, request_id: "req_1", message });
 
     const client = new PostMX("pmx_live_test");
@@ -162,7 +204,7 @@ describe("PostMX client", () => {
   });
 
   it("getMessage with content_mode=text_only sends query param", async () => {
-    const message = { id: "msg_1", text_body: "Hello world" };
+    const message = { id: "msg_1", text_body: "Hello world", analysis: { eligible: true, status: "queued", requested_at: null, completed_at: null, detected_otp: null, sender_name: null, category: null, extracted_id: null, amount_mentioned: null, is_urgent: null, action_required: null, summary: null } };
     mockFetchOnce(200, { success: true, request_id: "req_1", message });
 
     const client = new PostMX("pmx_live_test");
@@ -187,7 +229,7 @@ describe("PostMX client", () => {
   it("waitForMessage polls until a message arrives", async () => {
     const emptyResponse = { success: true, request_id: "req_1", messages: [], page_info: { has_more: false, next_cursor: null } };
     const messagesResponse = { success: true, request_id: "req_2", messages: [{ id: "msg_1" }], page_info: { has_more: false, next_cursor: null } };
-    const messageDetail = { id: "msg_1", otp: "123456", links: [], intent: "login_code" };
+    const messageDetail = { id: "msg_1", otp: "123456", links: [], intent: "login_code", analysis: { eligible: true, status: "queued", requested_at: null, completed_at: null, detected_otp: null, sender_name: null, category: null, extracted_id: null, amount_mentioned: null, is_urgent: null, action_required: null, summary: null } };
     const detailResponse = { success: true, request_id: "req_3", message: messageDetail };
 
     let callCount = 0;

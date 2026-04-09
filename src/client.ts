@@ -4,6 +4,7 @@ import type {
   PostMXConfig,
   ContentMode,
   CreateInboxParams,
+  CreateTemporaryInboxParams,
   ListInboxesParams,
   Inbox,
   ListMessagesParams,
@@ -74,6 +75,21 @@ export class PostMX {
       timeout: this.timeout,
     });
     return data.inbox;
+  }
+
+  async createTemporaryInbox(
+    params: CreateTemporaryInboxParams,
+    options?: { idempotencyKey?: string },
+  ): Promise<Inbox> {
+    return this.createInbox(
+      {
+        label: params.label,
+        lifecycle_mode: "temporary",
+        ...(params.ttl_minutes !== undefined ? { ttl_minutes: params.ttl_minutes } : {}),
+        ...(params.message_analysis ? { message_analysis: params.message_analysis } : {}),
+      },
+      options,
+    );
   }
 
   async listMessages(
@@ -157,7 +173,7 @@ export class PostMX {
   }
 
   /**
-   * Poll an inbox until at least one message arrives, then return the latest message.
+   * Return the latest existing message immediately, or wait for the next incoming email until timeout.
    *
    * Useful for test automation — create an inbox, trigger an email, then:
    *   const msg = await client.waitForMessage("inb_123");

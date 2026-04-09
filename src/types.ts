@@ -13,6 +13,8 @@ export type MessageIntent = "login_code" | "verification" | "password_reset" | "
 export type LinkType = "verification" | "magic_link" | "password_reset" | "unsubscribe" | "other";
 export type ContentMode = "full" | "otp" | "links" | "text_only";
 export type DeliveryScope = "account" | "inbox";
+export type InboxMessageAnalysisMode = "all" | "disabled" | "allowlist" | "blocklist";
+export type MessageAnalysisStatus = "none" | "queued" | "complete" | "failed" | "skipped_quota";
 
 // --- Request params ---
 
@@ -20,6 +22,13 @@ export interface CreateInboxParams {
   label: string;
   lifecycle_mode: LifecycleMode;
   ttl_minutes?: number;
+  message_analysis?: InboxMessageAnalysis;
+}
+
+export interface CreateTemporaryInboxParams {
+  label: string;
+  ttl_minutes?: number;
+  message_analysis?: InboxMessageAnalysis;
 }
 
 export interface ListMessagesParams {
@@ -57,6 +66,7 @@ export interface Inbox {
   status: string;
   last_message_received_at: string | null;
   created_at: string;
+  message_analysis: InboxMessageAnalysis;
 }
 
 export interface MessageSummary {
@@ -78,24 +88,48 @@ export interface ExtractedLink {
   type: LinkType;
 }
 
+export interface InboxMessageAnalysis {
+  mode: InboxMessageAnalysisMode;
+  recipients: string[];
+}
+
+export interface MessageAnalysis {
+  eligible: boolean;
+  status: MessageAnalysisStatus;
+  requested_at: string | null;
+  completed_at: string | null;
+  detected_otp: string | null;
+  sender_name: string | null;
+  category: string | null;
+  extracted_id: string | null;
+  amount_mentioned: string | null;
+  is_urgent: boolean | null;
+  action_required: boolean | null;
+  summary: string | null;
+}
+
 export interface MessageDetail extends MessageSummary {
   text_body: string | null;
   html_body: string | null;
   otp: string | null;
   links: ExtractedLink[];
   intent: MessageIntent | null;
+  analysis: MessageAnalysis;
 }
 
 export interface MessageOtpDetail extends MessageSummary {
   otp: string | null;
+  analysis: MessageAnalysis;
 }
 
 export interface MessageLinksDetail extends MessageSummary {
   links: ExtractedLink[];
+  analysis: MessageAnalysis;
 }
 
 export interface MessageTextOnlyDetail extends MessageSummary {
   text_body: string | null;
+  analysis: MessageAnalysis;
 }
 
 export interface WildcardAddress {
@@ -137,7 +171,7 @@ export interface WebhookEventInbox {
 
 export interface WebhookEvent {
   id: string;
-  type: "email.received";
+  type: "email.received" | "email.enriched";
   created_at: string;
   data: {
     inbox: WebhookEventInbox;

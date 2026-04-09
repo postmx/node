@@ -5,7 +5,7 @@ import { DEFAULT_BASE_URL, normalizeBaseUrl } from "./config.js";
 import { PostMX } from "./client.js";
 import { PostMXError, PostMXApiError, PostMXNetworkError } from "./errors.js";
 
-const VERSION = "0.1.1";
+const VERSION = "0.1.2";
 
 // ── ANSI ────────────────────────────────────────────────────────────
 

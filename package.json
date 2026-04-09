@@ -1,6 +1,6 @@
 {
   "name": "postmx",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Official PostMX Node.js SDK",
   "license": "MIT",
   "repository": {
@@ -10,7 +10,13 @@
   "homepage": "https://github.com/postmx/node",
   "bugs": "https://github.com/postmx/node/issues",
   "author": "postmx <dev@postmx.co>",
-  "keywords": ["postmx", "email", "inbox", "otp", "sdk"],
+  "keywords": [
+    "postmx",
+    "email",
+    "inbox",
+    "otp",
+    "sdk"
+  ],
   "type": "module",
   "exports": {
     ".": {
